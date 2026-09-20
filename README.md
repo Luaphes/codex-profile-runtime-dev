@@ -153,3 +153,7 @@ There is no separate `http_proxy`, `no_proxy`, or arbitrary environment configur
 See [`docs/architecture-v0.1.md`](docs/architecture-v0.1.md) for the v0.1 design and safety boundaries.
 
 See [`docs/integration-smoke.md`](docs/integration-smoke.md) for the manual macOS integration checklist.
+
+## License
+
+MIT
