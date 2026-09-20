@@ -10,7 +10,7 @@ import (
 
 func TestRunValidateWithConfigOverride(t *testing.T) {
 	configPath := filepath.Join(t.TempDir(), "config.json")
-	config := []byte(`{"profiles":{"ninibin":{"proxy":"socks5://127.0.0.1:18081"}}}`)
+	config := []byte(`{"profiles":{"personal":{"proxy":"socks5://127.0.0.1:1080"}}}`)
 	if err := os.WriteFile(configPath, config, 0o600); err != nil {
 		t.Fatalf("os.WriteFile() error = %v", err)
 	}
@@ -41,9 +41,9 @@ func TestParseLaunchArgsSupportsConfigBeforeOrAfterProfile(t *testing.T) {
 		name string
 		args []string
 	}{
-		{name: "profile then config", args: []string{"ninibin", "--config", "./test-config.json"}},
-		{name: "config then profile", args: []string{"--config", "./test-config.json", "ninibin"}},
-		{name: "config equals", args: []string{"ninibin", "--config=./test-config.json"}},
+		{name: "profile then config", args: []string{"personal", "--config", "./test-config.json"}},
+		{name: "config then profile", args: []string{"--config", "./test-config.json", "personal"}},
+		{name: "config equals", args: []string{"personal", "--config=./test-config.json"}},
 	}
 
 	for _, test := range tests {
@@ -52,8 +52,8 @@ func TestParseLaunchArgsSupportsConfigBeforeOrAfterProfile(t *testing.T) {
 			if err != nil {
 				t.Fatalf("parseLaunchArgs() error = %v", err)
 			}
-			if profile != "ninibin" || configPath != "./test-config.json" {
-				t.Fatalf("parseLaunchArgs() = (%q, %q), want (ninibin, ./test-config.json)", profile, configPath)
+			if profile != "personal" || configPath != "./test-config.json" {
+				t.Fatalf("parseLaunchArgs() = (%q, %q), want (personal, ./test-config.json)", profile, configPath)
 			}
 		})
 	}
@@ -82,17 +82,17 @@ func TestParseListArgsRejectsUnexpectedArguments(t *testing.T) {
 }
 
 func TestParseStopArgsSupportsForceAndConfig(t *testing.T) {
-	profile, force, configPath, err := parseStopArgs([]string{"--force", "ninibin", "--config=./test-config.json"})
+	profile, force, configPath, err := parseStopArgs([]string{"--force", "personal", "--config=./test-config.json"})
 	if err != nil {
 		t.Fatalf("parseStopArgs() error = %v", err)
 	}
-	if profile != "ninibin" || !force || configPath != "./test-config.json" {
-		t.Fatalf("parseStopArgs() = (%q, %t, %q), want (ninibin, true, ./test-config.json)", profile, force, configPath)
+	if profile != "personal" || !force || configPath != "./test-config.json" {
+		t.Fatalf("parseStopArgs() = (%q, %t, %q), want (personal, true, ./test-config.json)", profile, force, configPath)
 	}
 }
 
 func TestParseStopArgsRejectsUnknownOption(t *testing.T) {
-	if _, _, _, err := parseStopArgs([]string{"ninibin", "--kill-all"}); err == nil {
+	if _, _, _, err := parseStopArgs([]string{"personal", "--kill-all"}); err == nil {
 		t.Fatal("parseStopArgs() unexpectedly accepted unknown option")
 	}
 }

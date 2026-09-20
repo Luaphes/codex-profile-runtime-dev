@@ -43,10 +43,10 @@ func (s *fakeScanner) FindMain(executablePath, userDataDir string) (process.Info
 
 func TestBuildOpenCommandWithProxy(t *testing.T) {
 	profile := config.ResolvedProfile{
-		ID:          "ninibin",
-		Proxy:       "socks5://127.0.0.1:18081",
-		CodexHome:   "/tmp/runtime/profiles/ninibin/codex-home",
-		UserDataDir: "/tmp/runtime/profiles/ninibin/chatgpt-user-data",
+		ID:          "personal",
+		Proxy:       "socks5://127.0.0.1:1080",
+		CodexHome:   "/tmp/runtime/profiles/personal/codex-home",
+		UserDataDir: "/tmp/runtime/profiles/personal/chatgpt-user-data",
 	}
 
 	spec, err := BuildOpenCommand("/Applications/ChatGPT.app", profile)
@@ -59,8 +59,8 @@ func TestBuildOpenCommandWithProxy(t *testing.T) {
 		"-a",
 		"/Applications/ChatGPT.app",
 		"--args",
-		"--user-data-dir=/tmp/runtime/profiles/ninibin/chatgpt-user-data",
-		"--proxy-server=socks5://127.0.0.1:18081",
+		"--user-data-dir=/tmp/runtime/profiles/personal/chatgpt-user-data",
+		"--proxy-server=socks5://127.0.0.1:1080",
 	}
 	if got, want := spec.Path, "/usr/bin/open"; got != want {
 		t.Fatalf("Path = %q, want %q", got, want)
@@ -85,9 +85,9 @@ func TestBuildOpenCommandWithProxy(t *testing.T) {
 
 func TestBuildOpenCommandWithoutProxyOmitsProxySettings(t *testing.T) {
 	profile := config.ResolvedProfile{
-		ID:          "lucas",
-		CodexHome:   "/tmp/runtime/profiles/lucas/codex-home",
-		UserDataDir: "/tmp/runtime/profiles/lucas/chatgpt-user-data",
+		ID:          "work",
+		CodexHome:   "/tmp/runtime/profiles/work/codex-home",
+		UserDataDir: "/tmp/runtime/profiles/work/chatgpt-user-data",
 	}
 
 	spec, err := BuildOpenCommand("/Applications/ChatGPT.app", profile)
@@ -199,7 +199,7 @@ func TestMergeEnvironmentDoesNotModifyProcessEnvironment(t *testing.T) {
 
 func TestServiceRejectsMissingApp(t *testing.T) {
 	root := t.TempDir()
-	profile := resolvedProfile(t, root, "ninibin")
+	profile := resolvedProfile(t, root, "personal")
 	runner := &fakeRunner{}
 	service := NewService(runner, &fakeScanner{})
 
@@ -214,7 +214,7 @@ func TestServiceRejectsMissingApp(t *testing.T) {
 
 func TestServiceRejectsSymlinkEscape(t *testing.T) {
 	root := t.TempDir()
-	profile := resolvedProfile(t, root, "ninibin")
+	profile := resolvedProfile(t, root, "personal")
 	if err := os.MkdirAll(filepath.Dir(profile.CodexHome), 0o700); err != nil {
 		t.Fatalf("MkdirAll() error = %v", err)
 	}
@@ -237,7 +237,7 @@ func TestServiceRejectsSymlinkEscape(t *testing.T) {
 
 func TestServiceRejectsAlreadyRunningProfile(t *testing.T) {
 	root := t.TempDir()
-	profile := resolvedProfile(t, root, "ninibin")
+	profile := resolvedProfile(t, root, "personal")
 	canonicalPaths := preparedPaths(t, root, profile)
 	appPath := testApp(t)
 	executable, err := ValidateApp(appPath)
@@ -269,7 +269,7 @@ func TestServiceRejectsAlreadyRunningProfile(t *testing.T) {
 
 func TestServiceWaitsForVerifiedProcess(t *testing.T) {
 	root := t.TempDir()
-	profile := resolvedProfile(t, root, "ninibin")
+	profile := resolvedProfile(t, root, "personal")
 	canonicalPaths := preparedPaths(t, root, profile)
 	appPath := testApp(t)
 	executable, err := ValidateApp(appPath)
@@ -303,7 +303,7 @@ func TestServiceWaitsForVerifiedProcess(t *testing.T) {
 
 func TestServiceTimesOutWhenVerificationDoesNotFindProcess(t *testing.T) {
 	root := t.TempDir()
-	profile := resolvedProfile(t, root, "ninibin")
+	profile := resolvedProfile(t, root, "personal")
 	appPath := testApp(t)
 	executable, err := ValidateApp(appPath)
 	if err != nil {
