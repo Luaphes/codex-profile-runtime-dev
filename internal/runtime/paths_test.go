@@ -9,14 +9,14 @@ import (
 
 func TestNormalizePathDoesNotRequireExistingDirectory(t *testing.T) {
 	homeDir := t.TempDir()
-	rawPath := "~/profiles/ninibin/codex-home"
+	rawPath := "~/profiles/personal/codex-home"
 
 	got, err := NormalizePath(rawPath, homeDir)
 	if err != nil {
 		t.Fatalf("NormalizePath() error = %v", err)
 	}
 
-	want := filepath.Join(homeDir, "profiles", "ninibin", "codex-home")
+	want := filepath.Join(homeDir, "profiles", "personal", "codex-home")
 	if got != want {
 		t.Fatalf("NormalizePath() = %q, want %q", got, want)
 	}
@@ -49,13 +49,13 @@ func TestDefaultConfigPath(t *testing.T) {
 
 func TestDeriveProfilePaths(t *testing.T) {
 	runtimeRoot := "/tmp/CodexProfileRuntime"
-	got, err := DeriveProfilePaths(runtimeRoot, "ninibin")
+	got, err := DeriveProfilePaths(runtimeRoot, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
 
-	wantCodex := filepath.Join(runtimeRoot, "profiles", "ninibin", "codex-home")
-	wantUserData := filepath.Join(runtimeRoot, "profiles", "ninibin", "chatgpt-user-data")
+	wantCodex := filepath.Join(runtimeRoot, "profiles", "personal", "codex-home")
+	wantUserData := filepath.Join(runtimeRoot, "profiles", "personal", "chatgpt-user-data")
 	if got.CodexHome != wantCodex {
 		t.Fatalf("CodexHome = %q, want %q", got.CodexHome, wantCodex)
 	}
@@ -66,12 +66,12 @@ func TestDeriveProfilePaths(t *testing.T) {
 
 func TestPrepareProfilePathsCreatesOnlyCurrentProfileDirectories(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "runtime-root")
-	expected, err := DeriveProfilePaths(root, "ninibin")
+	expected, err := DeriveProfilePaths(root, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
 
-	got, err := PrepareProfilePaths(root, "ninibin", expected)
+	got, err := PrepareProfilePaths(root, "personal", expected)
 	if err != nil {
 		t.Fatalf("PrepareProfilePaths() error = %v", err)
 	}
@@ -79,7 +79,7 @@ func TestPrepareProfilePathsCreatesOnlyCurrentProfileDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatalf("EvalSymlinks() error = %v", err)
 	}
-	want, err := DeriveProfilePaths(realRoot, "ninibin")
+	want, err := DeriveProfilePaths(realRoot, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths(real root) error = %v", err)
 	}
@@ -105,7 +105,7 @@ func TestPrepareProfilePathsCreatesOnlyCurrentProfileDirectories(t *testing.T) {
 
 func TestPrepareProfilePathsRejectsSymlinkEscape(t *testing.T) {
 	root := t.TempDir()
-	expected, err := DeriveProfilePaths(root, "ninibin")
+	expected, err := DeriveProfilePaths(root, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
@@ -117,7 +117,7 @@ func TestPrepareProfilePathsRejectsSymlinkEscape(t *testing.T) {
 		t.Fatalf("os.Symlink() error = %v", err)
 	}
 
-	_, err = PrepareProfilePaths(root, "ninibin", expected)
+	_, err = PrepareProfilePaths(root, "personal", expected)
 	if err == nil || !strings.Contains(err.Error(), "escapes runtime root") {
 		t.Fatalf("PrepareProfilePaths() error = %v, want symlink escape error", err)
 	}
@@ -163,17 +163,17 @@ func TestPrepareProfilePathsRejectsInternalProfileAliases(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			root := t.TempDir()
-			expected, err := DeriveProfilePaths(root, "ninibin")
+			expected, err := DeriveProfilePaths(root, "personal")
 			if err != nil {
 				t.Fatalf("DeriveProfilePaths() error = %v", err)
 			}
-			other, err := DeriveProfilePaths(root, "lucas")
+			other, err := DeriveProfilePaths(root, "work")
 			if err != nil {
 				t.Fatalf("DeriveProfilePaths() error = %v", err)
 			}
 			test.link(t, expected, other)
 
-			_, err = PrepareProfilePaths(root, "ninibin", expected)
+			_, err = PrepareProfilePaths(root, "personal", expected)
 			if err == nil || !strings.Contains(err.Error(), "must not be a symlink") {
 				t.Fatalf("PrepareProfilePaths() error = %v, want internal alias rejection", err)
 			}
@@ -183,7 +183,7 @@ func TestPrepareProfilePathsRejectsInternalProfileAliases(t *testing.T) {
 
 func TestPrepareProfilePathsTightensExistingDirectoryPermissions(t *testing.T) {
 	root := t.TempDir()
-	expected, err := DeriveProfilePaths(root, "ninibin")
+	expected, err := DeriveProfilePaths(root, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
@@ -207,7 +207,7 @@ func TestPrepareProfilePathsTightensExistingDirectoryPermissions(t *testing.T) {
 		}
 	}
 
-	got, err := PrepareProfilePaths(root, "ninibin", expected)
+	got, err := PrepareProfilePaths(root, "personal", expected)
 	if err != nil {
 		t.Fatalf("PrepareProfilePaths() error = %v", err)
 	}
@@ -224,12 +224,12 @@ func TestPrepareProfilePathsTightensExistingDirectoryPermissions(t *testing.T) {
 
 func TestResolveProfilePathsDoesNotCreateMissingRuntimeDirectories(t *testing.T) {
 	root := filepath.Join(t.TempDir(), "missing-runtime-root")
-	expected, err := DeriveProfilePaths(root, "ninibin")
+	expected, err := DeriveProfilePaths(root, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
 
-	got, err := ResolveProfilePaths(root, "ninibin", expected)
+	got, err := ResolveProfilePaths(root, "personal", expected)
 	if err != nil {
 		t.Fatalf("ResolveProfilePaths() error = %v", err)
 	}
@@ -243,11 +243,11 @@ func TestResolveProfilePathsDoesNotCreateMissingRuntimeDirectories(t *testing.T)
 
 func TestResolveProfilePathsRejectsInternalSymlinkAlias(t *testing.T) {
 	root := t.TempDir()
-	expected, err := DeriveProfilePaths(root, "ninibin")
+	expected, err := DeriveProfilePaths(root, "personal")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
-	other, err := DeriveProfilePaths(root, "lucas")
+	other, err := DeriveProfilePaths(root, "work")
 	if err != nil {
 		t.Fatalf("DeriveProfilePaths() error = %v", err)
 	}
@@ -261,7 +261,7 @@ func TestResolveProfilePathsRejectsInternalSymlinkAlias(t *testing.T) {
 		t.Fatalf("os.Symlink() error = %v", err)
 	}
 
-	_, err = ResolveProfilePaths(root, "ninibin", expected)
+	_, err = ResolveProfilePaths(root, "personal", expected)
 	if err == nil || !strings.Contains(err.Error(), "must not be a symlink") {
 		t.Fatalf("ResolveProfilePaths() error = %v, want internal alias rejection", err)
 	}

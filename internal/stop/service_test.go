@@ -91,17 +91,17 @@ type stopFixture struct {
 }
 
 func TestStopSendsSIGTERMOnlyToTargetAndProtectsOtherProfile(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin", "lucas")
+	fixture := newStopFixture(t, "personal", "work")
 	start := time.Unix(100, 0)
-	target := fixture.mainInfo(101, start, "ninibin")
-	other := fixture.mainInfo(202, start.Add(time.Minute), "lucas")
+	target := fixture.mainInfo(101, start, "personal")
+	other := fixture.mainInfo(202, start.Add(time.Minute), "work")
 	inspector := &fakeInspector{snapshots: [][]process.Info{
 		{target, other},
 		{other},
 	}}
 	signaler := &fakeSignaler{}
 
-	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false); err != nil {
+	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}}; !equalSignalCalls(signaler.calls, want) {
@@ -110,10 +110,10 @@ func TestStopSendsSIGTERMOnlyToTargetAndProtectsOtherProfile(t *testing.T) {
 }
 
 func TestStopRejectsProfileThatIsNotRunning(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
+	fixture := newStopFixture(t, "personal")
 	signaler := &fakeSignaler{}
-	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
-	if !errors.Is(err, ErrNotRunning) || !strings.Contains(err.Error(), `profile "ninibin" is not running`) {
+	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
+	if !errors.Is(err, ErrNotRunning) || !strings.Contains(err.Error(), `profile "personal" is not running`) {
 		t.Fatalf("Stop() error = %v, want not-running error", err)
 	}
 	if len(signaler.calls) != 0 {
@@ -122,12 +122,12 @@ func TestStopRejectsProfileThatIsNotRunning(t *testing.T) {
 }
 
 func TestStopRejectsSubstringUserDataMatch(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
+	fixture := newStopFixture(t, "personal")
 	start := time.Unix(100, 0)
-	candidate := fixture.mainInfo(101, start, "ninibin")
-	candidate.Args = []string{"ChatGPT", "--user-data-dir=" + fixture.paths["ninibin"].UserDataDir + "-suffix"}
+	candidate := fixture.mainInfo(101, start, "personal")
+	candidate.Args = []string{"ChatGPT", "--user-data-dir=" + fixture.paths["personal"].UserDataDir + "-suffix"}
 	signaler := &fakeSignaler{}
-	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{candidate}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{candidate}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if !errors.Is(err, ErrNotRunning) {
 		t.Fatalf("Stop() error = %v, want not-running error", err)
 	}
@@ -137,11 +137,11 @@ func TestStopRejectsSubstringUserDataMatch(t *testing.T) {
 }
 
 func TestStopFailsIfTargetReappearsOnFinalRescan(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target}, {}, {target}}}
 	signaler := &fakeSignaler{}
-	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if !errors.Is(err, ErrIdentity) {
 		t.Fatalf("Stop() error = %v, want final-rescan identity error", err)
 	}
@@ -151,11 +151,11 @@ func TestStopFailsIfTargetReappearsOnFinalRescan(t *testing.T) {
 }
 
 func TestStopFailsClosedOnAmbiguousMainIdentity(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	first := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
-	second := fixture.mainInfo(102, time.Unix(200, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	first := fixture.mainInfo(101, time.Unix(100, 0), "personal")
+	second := fixture.mainInfo(102, time.Unix(200, 0), "personal")
 	signaler := &fakeSignaler{}
-	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{first, second}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{first, second}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if !errors.Is(err, ErrAmbiguous) || !strings.Contains(err.Error(), "matched multiple") {
 		t.Fatalf("Stop() error = %v, want ambiguity error", err)
 	}
@@ -165,8 +165,8 @@ func TestStopFailsClosedOnAmbiguousMainIdentity(t *testing.T) {
 }
 
 func TestStopRevalidatesStartTimeBeforeSIGTERM(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	initial := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	initial := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	changed := initial
 	changed.StartTime = time.Unix(200, 0)
 	inspector := &fakeInspector{
@@ -174,7 +174,7 @@ func TestStopRevalidatesStartTimeBeforeSIGTERM(t *testing.T) {
 		revalidate: map[int][]fakeRevalidation{101: {{info: changed, ok: true}}},
 	}
 	signaler := &fakeSignaler{}
-	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if !errors.Is(err, ErrIdentity) {
 		t.Fatalf("Stop() error = %v, want identity error", err)
 	}
@@ -184,8 +184,8 @@ func TestStopRevalidatesStartTimeBeforeSIGTERM(t *testing.T) {
 }
 
 func TestStopRevalidatesExecutableBeforeSIGTERM(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	initial := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	initial := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	changed := initial
 	changed.ExecutablePath = filepath.Join(t.TempDir(), "Other.app", "Contents", "MacOS", "ChatGPT")
 	inspector := &fakeInspector{
@@ -193,7 +193,7 @@ func TestStopRevalidatesExecutableBeforeSIGTERM(t *testing.T) {
 		revalidate: map[int][]fakeRevalidation{101: {{info: changed, ok: true}}},
 	}
 	signaler := &fakeSignaler{}
-	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if !errors.Is(err, ErrIdentity) {
 		t.Fatalf("Stop() error = %v, want identity error", err)
 	}
@@ -203,8 +203,8 @@ func TestStopRevalidatesExecutableBeforeSIGTERM(t *testing.T) {
 }
 
 func TestStopRevalidatesExactUserDataDirBeforeSIGTERM(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	initial := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	initial := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	changed := initial
 	changed.Args = []string{"ChatGPT", "--user-data-dir=/tmp/other-profile"}
 	inspector := &fakeInspector{
@@ -212,7 +212,7 @@ func TestStopRevalidatesExactUserDataDirBeforeSIGTERM(t *testing.T) {
 		revalidate: map[int][]fakeRevalidation{101: {{info: changed, ok: true}}},
 	}
 	signaler := &fakeSignaler{}
-	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if !errors.Is(err, ErrIdentity) {
 		t.Fatalf("Stop() error = %v, want identity error", err)
 	}
@@ -222,13 +222,13 @@ func TestStopRevalidatesExactUserDataDirBeforeSIGTERM(t *testing.T) {
 }
 
 func TestStopTimeoutNeverEscalatesWithoutForce(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target}, {target}}}
 	signaler := &fakeSignaler{}
 	service := newTestService(inspector, signaler)
 	service.Timeout = time.Millisecond
-	if err := service.Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false); !errors.Is(err, ErrStopTimeout) {
+	if err := service.Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false); !errors.Is(err, ErrStopTimeout) {
 		t.Fatalf("Stop() error = %v, want timeout error", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}}; !equalSignalCalls(signaler.calls, want) {
@@ -237,8 +237,8 @@ func TestStopTimeoutNeverEscalatesWithoutForce(t *testing.T) {
 }
 
 func TestForceKillsMainOnlyAfterSIGTERMTimeout(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target}, {target}}}
 	signaler := &fakeSignaler{}
 	signaler.onSignal = func(call signalCall) {
@@ -249,7 +249,7 @@ func TestForceKillsMainOnlyAfterSIGTERMTimeout(t *testing.T) {
 	}
 	service := newTestService(inspector, signaler)
 	service.Timeout = time.Millisecond
-	if err := service.Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true); err != nil {
+	if err := service.Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	want := []signalCall{{pid: 101, signal: SignalTERM}, {pid: 101, signal: SignalKILL}}
@@ -259,10 +259,10 @@ func TestForceKillsMainOnlyAfterSIGTERMTimeout(t *testing.T) {
 }
 
 func TestForceDoesNotSIGKILLWhenSIGTERMSucceeds(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	signaler := &fakeSignaler{}
-	if err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target}, {}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true); err != nil {
+	if err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target}, {}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}}; !equalSignalCalls(signaler.calls, want) {
@@ -271,12 +271,12 @@ func TestForceDoesNotSIGKILLWhenSIGTERMSucceeds(t *testing.T) {
 }
 
 func TestForceKillsExactUserDataHelperAfterRevalidation(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
-	helper := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir="+fixture.paths["ninibin"].UserDataDir)
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
+	helper := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir="+fixture.paths["personal"].UserDataDir)
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target, helper}, {helper}, {helper}, {}}}
 	signaler := &fakeSignaler{}
-	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true); err != nil {
+	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	want := []signalCall{{pid: 101, signal: SignalTERM}, {pid: 303, signal: SignalKILL}}
@@ -289,12 +289,12 @@ func TestForceKillsExactUserDataHelperAfterRevalidation(t *testing.T) {
 }
 
 func TestForceKillsHelperWithValidatedInitialAncestry(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	helper := fixture.helperInfo(303, 101, time.Unix(110, 0))
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target, helper}, {helper}, {helper}, {}}}
 	signaler := &fakeSignaler{}
-	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true); err != nil {
+	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}, {pid: 303, signal: SignalKILL}}; !equalSignalCalls(signaler.calls, want) {
@@ -303,12 +303,12 @@ func TestForceKillsHelperWithValidatedInitialAncestry(t *testing.T) {
 }
 
 func TestHelperWithOnlySharedExecutableIsNeverKilled(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	helper := fixture.helperInfo(303, 999, time.Unix(110, 0))
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target, helper}, {helper}}}
 	signaler := &fakeSignaler{}
-	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
+	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
 	if err != nil {
 		t.Fatalf("Stop() error = %v, want success for unowned helper", err)
 	}
@@ -318,12 +318,12 @@ func TestHelperWithOnlySharedExecutableIsNeverKilled(t *testing.T) {
 }
 
 func TestForceNeverKillsHelperWithConflictingUserDataDir(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	helper := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir=/tmp/other-profile")
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target, helper}, {helper}}}
 	signaler := &fakeSignaler{}
-	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true); err != nil {
+	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true); err != nil {
 		t.Fatalf("Stop() error = %v, want success without killing ambiguous helper", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}}; !equalSignalCalls(signaler.calls, want) {
@@ -332,13 +332,13 @@ func TestForceNeverKillsHelperWithConflictingUserDataDir(t *testing.T) {
 }
 
 func TestHelperBelongingToOtherProfileIsNeverKilled(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin", "lucas")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
-	other := fixture.mainInfo(202, time.Unix(200, 0), "lucas")
+	fixture := newStopFixture(t, "personal", "work")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
+	other := fixture.mainInfo(202, time.Unix(200, 0), "work")
 	helper := fixture.helperInfo(303, 202, time.Unix(210, 0))
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target, other, helper}, {other, helper}}}
 	signaler := &fakeSignaler{}
-	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false); err != nil {
+	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}}; !equalSignalCalls(signaler.calls, want) {
@@ -347,13 +347,13 @@ func TestHelperBelongingToOtherProfileIsNeverKilled(t *testing.T) {
 }
 
 func TestForceRevalidatesEveryResidualBeforeSIGKILL(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
-	first := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir="+fixture.paths["ninibin"].UserDataDir)
-	second := fixture.helperInfo(304, 101, time.Unix(120, 0), "--user-data-dir="+fixture.paths["ninibin"].UserDataDir)
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
+	first := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir="+fixture.paths["personal"].UserDataDir)
+	second := fixture.helperInfo(304, 101, time.Unix(120, 0), "--user-data-dir="+fixture.paths["personal"].UserDataDir)
 	inspector := &fakeInspector{snapshots: [][]process.Info{{target, first, second}, {first, second}, {first, second}, {second}, {}}, revalidate: map[int][]fakeRevalidation{}}
 	signaler := &fakeSignaler{}
-	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true); err != nil {
+	if err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	want := []signalCall{{pid: 101, signal: SignalTERM}, {pid: 303, signal: SignalKILL}, {pid: 304, signal: SignalKILL}}
@@ -366,10 +366,10 @@ func TestForceRevalidatesEveryResidualBeforeSIGKILL(t *testing.T) {
 }
 
 func TestResidualRevalidationFailureStopsFurtherSIGKILL(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
-	first := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir="+fixture.paths["ninibin"].UserDataDir)
-	second := fixture.helperInfo(304, 101, time.Unix(120, 0), "--user-data-dir="+fixture.paths["ninibin"].UserDataDir)
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
+	first := fixture.helperInfo(303, 101, time.Unix(110, 0), "--user-data-dir="+fixture.paths["personal"].UserDataDir)
+	second := fixture.helperInfo(304, 101, time.Unix(120, 0), "--user-data-dir="+fixture.paths["personal"].UserDataDir)
 	changed := second
 	changed.StartTime = time.Unix(999, 0)
 	inspector := &fakeInspector{
@@ -377,7 +377,7 @@ func TestResidualRevalidationFailureStopsFurtherSIGKILL(t *testing.T) {
 		revalidate: map[int][]fakeRevalidation{304: {{info: changed, ok: true}}},
 	}
 	signaler := &fakeSignaler{}
-	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true)
+	err := newTestService(inspector, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true)
 	if !errors.Is(err, ErrIdentity) {
 		t.Fatalf("Stop() error = %v, want identity error", err)
 	}
@@ -387,10 +387,10 @@ func TestResidualRevalidationFailureStopsFurtherSIGKILL(t *testing.T) {
 }
 
 func TestStopPropagatesSignalerErrorWithoutEscalation(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	signaler := &fakeSignaler{err: errors.New("signal denied")}
-	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], true)
+	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], true)
 	if err == nil || !strings.Contains(err.Error(), "signal denied") {
 		t.Fatalf("Stop() error = %v, want signal error", err)
 	}
@@ -400,16 +400,16 @@ func TestStopPropagatesSignalerErrorWithoutEscalation(t *testing.T) {
 }
 
 func TestStopDoesNotCreateRuntimeDirectories(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
+	fixture := newStopFixture(t, "personal")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
 	signaler := &fakeSignaler{}
-	if err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target}, {}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false); err != nil {
+	if err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target}, {}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false); err != nil {
 		t.Fatalf("Stop() error = %v", err)
 	}
 	for _, path := range []string{
 		filepath.Join(fixture.resolved.RuntimeRoot, "profiles"),
-		fixture.paths["ninibin"].CodexHome,
-		fixture.paths["ninibin"].UserDataDir,
+		fixture.paths["personal"].CodexHome,
+		fixture.paths["personal"].UserDataDir,
 	} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Fatalf("runtime path %q exists or returned unexpected error: %v", path, err)
@@ -418,12 +418,12 @@ func TestStopDoesNotCreateRuntimeDirectories(t *testing.T) {
 }
 
 func TestStopFailsIfOtherConfiguredMainDisappears(t *testing.T) {
-	fixture := newStopFixture(t, "ninibin", "lucas")
-	target := fixture.mainInfo(101, time.Unix(100, 0), "ninibin")
-	other := fixture.mainInfo(202, time.Unix(200, 0), "lucas")
+	fixture := newStopFixture(t, "personal", "work")
+	target := fixture.mainInfo(101, time.Unix(100, 0), "personal")
+	other := fixture.mainInfo(202, time.Unix(200, 0), "work")
 	signaler := &fakeSignaler{}
-	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target, other}, {}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["ninibin"], false)
-	if err == nil || !strings.Contains(err.Error(), `other profile "lucas"`) {
+	err := newTestService(&fakeInspector{snapshots: [][]process.Info{{target, other}, {}}}, signaler).Stop(fixture.resolved, fixture.resolved.Profiles["personal"], false)
+	if err == nil || !strings.Contains(err.Error(), `other profile "work"`) {
 		t.Fatalf("Stop() error = %v, want other-profile protection error", err)
 	}
 	if want := []signalCall{{pid: 101, signal: SignalTERM}}; !equalSignalCalls(signaler.calls, want) {

@@ -33,16 +33,16 @@ func (s *fakeSnapshotter) Snapshot(executablePath string) ([]process.Info, error
 
 func TestListMapsOnlyConfiguredExactIdentities(t *testing.T) {
 	resolved, paths := testConfig(t, map[string]string{
-		"ninibin": "socks5://127.0.0.1:18081",
-		"lucas":   "",
+		"personal": "socks5://127.0.0.1:1080",
+		"work":     "",
 	})
 	executable := testExecutablePath(t, resolved.ChatGPTApp)
 	start := time.Date(2026, 9, 18, 22, 40, 0, 0, time.FixedZone("CST", 8*60*60))
 	snapshotter := &fakeSnapshotter{processes: []process.Info{
-		{PID: 101, PPID: 1, StartTime: start, ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=" + paths["ninibin"].UserDataDir}},
-		{PID: 202, PPID: 1, StartTime: start.Add(-time.Hour), ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=" + paths["lucas"].UserDataDir}},
+		{PID: 101, PPID: 1, StartTime: start, ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=" + paths["personal"].UserDataDir}},
+		{PID: 202, PPID: 1, StartTime: start.Add(-time.Hour), ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=" + paths["work"].UserDataDir}},
 		{PID: 303, PPID: 1, StartTime: start, ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=/tmp/unmanaged"}},
-		{PID: 404, PPID: 1, StartTime: start, ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=" + paths["ninibin"].UserDataDir + "-suffix"}},
+		{PID: 404, PPID: 1, StartTime: start, ExecutablePath: executable, Args: []string{"ChatGPT", "--user-data-dir=" + paths["personal"].UserDataDir + "-suffix"}},
 	}}
 
 	instances, err := List(resolved, snapshotter)
@@ -55,22 +55,22 @@ func TestListMapsOnlyConfiguredExactIdentities(t *testing.T) {
 	if len(instances) != 2 {
 		t.Fatalf("instances = %#v, want two configured matches", instances)
 	}
-	if instances[0].Profile != "lucas" || instances[0].PID != 202 {
-		t.Fatalf("first instance = %#v, want lucas/202", instances[0])
+	if instances[0].Profile != "personal" || instances[0].PID != 101 {
+		t.Fatalf("first instance = %#v, want personal/101", instances[0])
 	}
-	if instances[1].Profile != "ninibin" || instances[1].PID != 101 {
-		t.Fatalf("second instance = %#v, want ninibin/101", instances[1])
+	if instances[1].Profile != "work" || instances[1].PID != 202 {
+		t.Fatalf("second instance = %#v, want work/202", instances[1])
 	}
-	if instances[1].StartTime != "2026-09-18T22:40:00+08:00" {
-		t.Fatalf("start_time = %q, want RFC3339 value", instances[1].StartTime)
+	if instances[0].StartTime != "2026-09-18T22:40:00+08:00" {
+		t.Fatalf("start_time = %q, want RFC3339 value", instances[0].StartTime)
 	}
-	if instances[0].Proxy != "" {
-		t.Fatalf("lucas proxy = %q, want empty", instances[0].Proxy)
+	if instances[1].Proxy != "" {
+		t.Fatalf("work proxy = %q, want empty", instances[1].Proxy)
 	}
 }
 
 func TestListOmitsStoppedAndUnmanagedProfiles(t *testing.T) {
-	resolved, paths := testConfig(t, map[string]string{"ninibin": ""})
+	resolved, paths := testConfig(t, map[string]string{"personal": ""})
 	executable := testExecutablePath(t, resolved.ChatGPTApp)
 	snapshotter := &fakeSnapshotter{processes: []process.Info{{
 		PID:            303,
@@ -89,22 +89,22 @@ func TestListOmitsStoppedAndUnmanagedProfiles(t *testing.T) {
 }
 
 func TestListRejectsAmbiguousProfileIdentity(t *testing.T) {
-	resolved, paths := testConfig(t, map[string]string{"ninibin": ""})
+	resolved, paths := testConfig(t, map[string]string{"personal": ""})
 	executable := testExecutablePath(t, resolved.ChatGPTApp)
-	matchingArgs := []string{"ChatGPT", "--user-data-dir=" + paths["ninibin"].UserDataDir}
+	matchingArgs := []string{"ChatGPT", "--user-data-dir=" + paths["personal"].UserDataDir}
 	snapshotter := &fakeSnapshotter{processes: []process.Info{
 		{PID: 101, StartTime: time.Now(), ExecutablePath: executable, Args: matchingArgs},
 		{PID: 102, StartTime: time.Now(), ExecutablePath: executable, Args: matchingArgs},
 	}}
 
 	_, err := List(resolved, snapshotter)
-	if err == nil || !strings.Contains(err.Error(), `profile "ninibin" matched multiple ChatGPT main processes`) {
+	if err == nil || !strings.Contains(err.Error(), `profile "personal" matched multiple ChatGPT main processes`) {
 		t.Fatalf("List() error = %v, want ambiguity error", err)
 	}
 }
 
 func TestListPropagatesSnapshotError(t *testing.T) {
-	resolved, _ := testConfig(t, map[string]string{"ninibin": ""})
+	resolved, _ := testConfig(t, map[string]string{"personal": ""})
 	wantErr := errors.New("snapshot unavailable")
 	_, err := List(resolved, &fakeSnapshotter{err: wantErr})
 	if !errors.Is(err, wantErr) {
@@ -114,12 +114,12 @@ func TestListPropagatesSnapshotError(t *testing.T) {
 
 func TestWriteJSONHasStableFieldsAndRFC3339StartTime(t *testing.T) {
 	instances := []Instance{{
-		Profile:     "ninibin",
+		Profile:     "personal",
 		PID:         101,
 		StartTime:   "2026-09-18T22:40:00+08:00",
-		UserDataDir: "/tmp/runtime/profiles/ninibin/chatgpt-user-data",
-		CodexHome:   "/tmp/runtime/profiles/ninibin/codex-home",
-		Proxy:       "socks5://127.0.0.1:18081",
+		UserDataDir: "/tmp/runtime/profiles/personal/chatgpt-user-data",
+		CodexHome:   "/tmp/runtime/profiles/personal/codex-home",
+		Proxy:       "socks5://127.0.0.1:1080",
 	}}
 	var output bytes.Buffer
 	if err := WriteJSON(&output, instances); err != nil {
@@ -149,11 +149,11 @@ func TestWriteJSONHasStableFieldsAndRFC3339StartTime(t *testing.T) {
 
 func TestWriteHumanShowsDashForMissingProxy(t *testing.T) {
 	var output bytes.Buffer
-	instances := []Instance{{Profile: "lucas", PID: 202, StartTime: "2026-09-18T21:10:00+08:00"}}
+	instances := []Instance{{Profile: "work", PID: 202, StartTime: "2026-09-18T21:10:00+08:00"}}
 	if err := WriteHuman(&output, instances); err != nil {
 		t.Fatalf("WriteHuman() error = %v", err)
 	}
-	if !strings.Contains(output.String(), "lucas\t202\t2026-09-18T21:10:00+08:00\t-") {
+	if !strings.Contains(output.String(), "work\t202\t2026-09-18T21:10:00+08:00\t-") {
 		t.Fatalf("human output = %q, want missing proxy marker", output.String())
 	}
 }
